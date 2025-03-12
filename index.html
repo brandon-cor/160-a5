@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Three.js World Explorer</title>
+    <style>
+        body { margin: 0; }
+        canvas { display: block; }
+        #textureSelector {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 100;
+        }
+        #info {
+            position: absolute;
+            top: 10px;
+            width: 100%;
+            text-align: center;
+            color: white;
+            font-family: Arial, sans-serif;
+            pointer-events: none;
+            text-shadow: 1px 1px 1px black;
+        }
+    </style>
+</head>
+
+<body>
+<div id="info">Click on objects to select them</div>
+
+<script type="module">
+    import * as THREE from './js/three.module.js';
+    import { OBJLoader } from './js/OBJLoader.js';
+    import { OrbitControls } from './js/OrbitControls.js';
+
+    const worldScene = new THREE.Scene();
+    
+    // Add fog to the scene (OPTIONAL FEATURE 1: FOG)
+    worldScene.fog = new THREE.FogExp2(0xCCCCFF, 0.01);
+
+    // Load and set the skybox
+    const skyboxLoader = new THREE.CubeTextureLoader();
+    const skyboxTexture = skyboxLoader.load([
+        'sky.jpg',  
+        'sky.jpg',
+        'sky.jpg',
+        'sky.jpg',
+        'sky.jpg',
+        'sky.jpg'
+    ]);
+    worldScene.background = skyboxTexture;
+
+    const mainCamera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    mainCamera.position.z = 50;
+
+    const worldRenderer = new THREE.WebGLRenderer({ antialias: true });
+    worldRenderer.setSize(window.innerWidth, window.innerHeight);
+    // Enable shadows in the renderer (OPTIONAL FEATURE 2: SHADOWS)
+    worldRenderer.shadowMap.enabled = true;
+    worldRenderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    document.body.appendChild(worldRenderer.domElement);
+
+    const cameraControls = new OrbitControls(mainCamera, worldRenderer.domElement);
+    cameraControls.enableDamping = true;
+    cameraControls.dampingFactor = 0.05;
+
+    const ambientLight = new THREE.AmbientLight(0x404040);
+    worldScene.add(ambientLight);
+
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+    directionalLight.position.set(5, 5, 5);
+    // Setup directional light to cast shadows
+    directionalLight.castShadow = true;
+    directionalLight.shadow.mapSize.width = 1024;
+    directionalLight.shadow.mapSize.height = 1024;
+    directionalLight.shadow.camera.near = 0.5;
+    directionalLight.shadow.camera.far = 50;
+    directionalLight.shadow.camera.left = -20;
+    directionalLight.shadow.camera.right = 20;
+    directionalLight.shadow.camera.top = 20;
+    directionalLight.shadow.camera.bottom = -20;
+    worldScene.add(directionalLight);
+
+    const pointLight = new THREE.PointLight(0xffffff, 1, 100);
+    pointLight.position.set(10, 10, 10);
+    // Setup point light to cast shadows
+    pointLight.castShadow = true;
+    pointLight.shadow.mapSize.width = 1024;
+    pointLight.shadow.mapSize.height = 1024;
+    worldScene.add(pointLight);
+
+    const hemisphereLight = new THREE.HemisphereLight(0xB1E1FF, 0xB97A20, 0.75);
+    hemisphereLight.position.set(0, 50, 0);
+    worldScene.add(hemisphereLight);
+
+    const textureLoaderBox = new THREE.TextureLoader();
+
+function createCloudFormation() {
+    const cloudGroup = new THREE.Group();
+    const cloudGeometry = new THREE.SphereGeometry(1, 32, 32);
+    const cloudMaterial = new THREE.MeshPhongMaterial({ color: 0xFFFFFF, opacity: 0.8, transparent: true });
+
+    for (let i = 0; i < 5; i++) {
+        const cloudSphere = new THREE.Mesh(cloudGeometry, cloudMaterial);
+        cloudSphere.position.x = Math.random() * 5;
+        cloudSphere.position.y = Math.random() * 2;
+        cloudSphere.position.z = Math.random() * 5;
+        cloudSphere.scale.setScalar(0.5 + Math.random() * 0.5);
+        cloudGroup.add(cloudSphere);
+    }
+
+    return cloudGroup;
+}
+
+for (let i = 0; i < 3; i++) {
+    const cloudFormation = createCloudFormation();
+    cloudFormation.position.set(
+        Math.random() * 50 - 25,
+        10 + Math.random() * 10,
+        Math.random() * 50 - 25
+    );
+    worldScene.add(cloudFormation);
+}
+
+function createRockFormation() {
+    const rockGeometry = new THREE.SphereGeometry(1, 16, 16);
+    const rockMaterial = new THREE.MeshPhongMaterial({ color: 0x888888 });
+    const rock = new THREE.Mesh(rockGeometry, rockMaterial);
+
+    rock.scale.x = 0.5 + Math.random() * 1.5;
+    rock.scale.y = 0.5 + Math.random() * 1.5;
+    rock.scale.z = 0.5 + Math.random() * 1.5;
+
+    rock.rotation.x = Math.random() * Math.PI;
+    rock.rotation.y = Math.random() * Math.PI;
+    rock.rotation.z = Math.random() * Math.PI;
+    
+    // Enable rock to cast and receive shadows
+    rock.castShadow = true;
+    rock.receiveShadow = true;
+
+    return rock;
+}
+
+for (let i = 0; i < 10; i++) {
+    const rockFormation = createRockFormation();
+    rockFormation.position.set(
+        Math.random() * 50 - 25,
+        -4,
+        Math.random() * 50 - 25
+    );
+    worldScene.add(rockFormation);
+}
+
+function createTreeObject() {
+    const trunkHeight = 2;
+    const trunkGeometry = new THREE.CylinderGeometry(0.3, 0.3, trunkHeight, 32);
+    const trunkMaterial = new THREE.MeshPhongMaterial({ color: 0x8B4513 });
+    const treeTrunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
+    treeTrunk.position.y = trunkHeight / 2 - 5;
+    treeTrunk.castShadow = true;
+    treeTrunk.receiveShadow = true;
+
+    const foliageHeight = 3;
+    const foliageGeometry = new THREE.ConeGeometry(1, foliageHeight, 32);
+    const foliageMaterial = new THREE.MeshPhongMaterial({ color: 0x228B22 });
+    const treeFoliage = new THREE.Mesh(foliageGeometry, foliageMaterial);
+    treeFoliage.position.y = trunkHeight - 5 + foliageHeight / 2;
+    treeFoliage.castShadow = true;
+    treeFoliage.receiveShadow = true;
+
+    const treeObject = new THREE.Group();
+    treeObject.add(treeTrunk);
+    treeObject.add(treeFoliage);
+
+    return treeObject;
+}
+
+for (let i = 0; i < 10; i++) {
+    const treeObject = createTreeObject();
+    treeObject.position.set(
+        Math.random() * 50 - 25,
+        0,
+        Math.random() * 50 - 25
+    );
+    worldScene.add(treeObject);
+}
+
+function createMountainFormation() {
+    const mountainGeometry = new THREE.ConeGeometry(5, 10, 32);
+    const mountainMaterial = new THREE.MeshPhongMaterial({ color: 0xEEDD44 }); // Yellow sand color
+    const mountain = new THREE.Mesh(mountainGeometry, mountainMaterial);
+
+    mountain.scale.x = 1 + Math.random() * 2;
+    mountain.scale.z = 1 + Math.random() * 2;
+    
+    // Enable mountain to cast and receive shadows
+    mountain.castShadow = true;
+    mountain.receiveShadow = true;
+    mountain.userData.name = "Sand Dune"; // Name for picking
+
+    mountain.position.y = 5 - 5;
+
+    return mountain;
+}
+
+// Add sand dunes to the scene, positioned away from cylinder and Earth
+for (let i = 0; i < 2; i++) {
+    const mountainFormation = createMountainFormation();
+    
+    // The cylinder is at (20, 0, 0) and Earth is at (2, 0, 0)
+    // Let's place sand dunes in the opposite quadrant (negative X, negative Z)
+    mountainFormation.position.set(
+        -30 - Math.random() * 15, // X position in negative range (-30 to -45)
+        0,
+        -20 - Math.random() * 15  // Z position in negative range (-20 to -35)
+    );
+    worldScene.add(mountainFormation);
+}
+
+    // Ground Plane
+    const groundGeometry = new THREE.PlaneGeometry(100, 100);
+    const groundMaterial = new THREE.MeshPhongMaterial({ color: 0x00ff00, side: THREE.DoubleSide });
+    const groundPlane = new THREE.Mesh(groundGeometry, groundMaterial);
+    groundPlane.rotation.x = -Math.PI / 2;
+    groundPlane.position.y = -5;
+    // Enable ground to receive shadows
+    groundPlane.receiveShadow = true;
+    worldScene.add(groundPlane);
+
+// Box (Rectangle)
+const cubeGeometry = new THREE.BoxGeometry(2, 2, 2);
+const cubeTexture = textureLoaderBox.load('one.jpg', function(texture) {
+    texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+    texture.offset.set(0, 0);
+    texture.repeat.set(1, 1);
+});
+const cubeMaterial = new THREE.MeshPhongMaterial({ map: cubeTexture });
+const cubeObject = new THREE.Mesh(cubeGeometry, cubeMaterial);
+cubeObject.scale.set(5, 5, 5);
+cubeObject.position.set(-20, 0, 0);
+cubeObject.castShadow = true;
+cubeObject.receiveShadow = true;
+cubeObject.userData.name = "Cube"; // For picking
+worldScene.add(cubeObject);
+
+// Sphere
+const sphereGeometry = new THREE.SphereGeometry(1, 128, 128);
+const sphereMaterial = new THREE.MeshPhongMaterial({ color: 0xff0000 });
+const sphereObject = new THREE.Mesh(sphereGeometry, sphereMaterial);
+sphereObject.scale.set(4, 4, 4);
+sphereObject.position.set(-40, 0, 0);
+sphereObject.castShadow = true;
+sphereObject.receiveShadow = true;
+sphereObject.userData.name = "Sphere"; // For picking
+worldScene.add(sphereObject);
+
+// Cylinder
+const cylinderGeometry = new THREE.CylinderGeometry(1, 1, 3, 32);
+const cylinderMaterial = new THREE.MeshPhongMaterial({ color: 0x0000ff });
+const cylinderObject = new THREE.Mesh(cylinderGeometry, cylinderMaterial);
+cylinderObject.position.set(20, 0, 0);
+cylinderObject.scale.set(5, 5, 5);
+cylinderObject.castShadow = true;
+cylinderObject.receiveShadow = true;
+cylinderObject.userData.name = "Cylinder"; // For picking
+worldScene.add(cylinderObject);
+
+const textureLoader = new THREE.TextureLoader();
+textureLoader.load('Ocean_Mask_2K.png', function(texture) {
+    const objLoader = new OBJLoader();
+    objLoader.load(
+        'earth.obj',
+        function (object) {
+            object.traverse(function (child) {
+                if (child instanceof THREE.Mesh) {
+                    child.material.map = texture;
+                    child.material.needsUpdate = true;
+                    child.castShadow = true;
+                    child.receiveShadow = true;
+                    child.userData.name = "Earth"; // For picking
+                }
+            });
+            object.position.set(2, 0, 0);
+            object.scale.set(2, 2, 2);
+            worldScene.add(object);
+            worldRenderer.render(worldScene, mainCamera);
+        },
+        function (xhr) {
+            console.log((xhr.loaded / xhr.total * 100) + '% loaded');
+        },
+        function (error) {
+            console.error('An error happened during the loading of the OBJ:', error);
+        }
+    );
+});
+
+function applyTexture(textureFile) {
+    if (textureFile) {
+        textureLoader.load(
+            textureFile,
+            function (texture) {
+                worldScene.children.forEach(function (child) {
+                    if (child instanceof THREE.Mesh && child !== sphereObject && child !== cubeObject && child !== cylinderObject) {
+                        child.material.map = texture;
+                        child.material.needsUpdate = true;
+                    }
+                });
+                worldRenderer.render(worldScene, mainCamera);
+            }
+        );
+    }
+}
+
+// Animation parameters
+let waveAmplitude = 5;
+let waveFrequency = 0.5;
+let worldClock = new THREE.Clock();
+
+// OPTIONAL FEATURE 3: PICKING (Object Selection)
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+let selectedObject = null;
+let originalColor = null;
+
+document.addEventListener('click', onDocumentClick, false);
+
+function onDocumentClick(event) {
+    // Calculate mouse position in normalized device coordinates
+    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+    
+    // Update the picking ray with the camera and mouse position
+    raycaster.setFromCamera(mouse, mainCamera);
+    
+    // Calculate objects intersecting the picking ray
+    const intersects = raycaster.intersectObjects(worldScene.children, true);
+    
+    // If we previously selected an object, restore its original color
+    if (selectedObject) {
+        if (selectedObject.material) {
+            selectedObject.material.emissive.setHex(originalColor);
+        }
+        selectedObject = null;
+    }
+    
+    // If we hit something
+    if (intersects.length > 0) {
+        // Get the first intersected object (closest to the camera)
+        selectedObject = intersects[0].object;
+        
+        // Store its original color and set a new emissive color
+        if (selectedObject.material && selectedObject.material.emissive) {
+            originalColor = selectedObject.material.emissive.getHex();
+            selectedObject.material.emissive.setHex(0xff0000); // Highlight in red
+            
+            // Display object name if available
+            const objectName = selectedObject.userData.name || "Unknown Object";
+            document.getElementById('info').textContent = `Selected: ${objectName}`;
+        }
+    } else {
+        document.getElementById('info').textContent = "Click on objects to select them";
+    }
+}
+
+window.addEventListener('resize', onWindowResize, false);
+
+function onWindowResize() {
+    mainCamera.aspect = window.innerWidth / window.innerHeight;
+    mainCamera.updateProjectionMatrix();
+    worldRenderer.setSize(window.innerWidth, window.innerHeight);
+}
+
+function animate() {
+    requestAnimationFrame(animate);
+
+    cameraControls.update();
+
+    let time = worldClock.getElapsedTime();
+    sphereObject.position.y = waveAmplitude * Math.sin(waveFrequency * time);
+
+    worldRenderer.render(worldScene, mainCamera);
+}
+animate();
+
+</script>
+
+</body>
+</html>
